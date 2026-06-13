@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mt Fuji - Global Pulp & Paper Digital Manufacturing Command Center</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Recharts -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f7ff',
+                            100: '#e0efff',
+                            200: '#bae0ff',
+                            300: '#7cc4ff',
+                            400: '#36a3ff',
+                            500: '#0c84f5',
+                            600: '#0066cc',
+                            700: '#0052a3',
+                            800: '#084482',
+                            900: '#1B3A6B',
+                        },
+                        secondary: {
+                            orange: '#F5A623',
+                            blue: '#0066CC',
+                        },
+                        status: {
+                            green: '#10B981',
+                            yellow: '#F59E0B',
+                            orange: '#EF4444',
+                            red: '#DC2626',
+                            blue: '#3B82F6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background: #f5f7fa; }
+        .card { @apply bg-white rounded-lg shadow-md p-6 border border-gray-100; }
+        .kpi-card { @apply bg-white rounded-lg shadow-sm p-4 border-l-4 border-primary-600; }
+        .leaflet-container { height: 400px; width: 100%; border-radius: 0.5rem; }
+        .dashboard-section { display: none; }
+        .dashboard-section.active { display: block; }
+        @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-green { animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+        // Mt Fuji Logo Component
+        const MtFujiLogo = () => (
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mr-2">
+                <path d="M20 5L25 15L20 25L15 15L20 5Z" fill="#F5A623" />
+                <path d="M20 15L25 25L20 35L15 25L20 15Z" fill="#0066CC" />
+            </svg>
+        );
+
+        // Sidebar Component
+        const Sidebar = ({ activeDashboard, onDashboardChange }) => {
+            const [isOpen, setIsOpen] = useState(true);
+            const menuItems = [
+                { id: 'global-ceo', label: 'Global CEO', icon: '🌍' },
+                { id: 'regional', label: 'Regional', icon: '🏢' },
+                { id: 'plant', label: 'Plant', icon: '🏭' },
+                { id: 'pulp-mill', label: 'Pulp Mill', icon: '' },
+                { id: 'paper-machine', label: 'Paper Machine', icon: '📄' },
+                { id: 'converting', label: 'Converting', icon: '✂️' },
+                { id: 'machine-twin', label: 'Machine Twin', icon: '🤖' },
+                { id: 'energy', label: 'Energy', icon: '⚡' },
+                { id: 'quality', label: 'Quality', icon: '✓' },
+                { id: 'maintenance', label: 'Maintenance', icon: '🔧' },
+                { id: 'sustainability', label: 'Sustainability', icon: '🌱' },
+                { id: 'shift', label: 'Shift Performance', icon: '👥' },
+                { id: 'supply-chain', label: 'Supply Chain', icon: '🚚' },
+                { id: 'ai-copilot', label: 'AI Copilot', icon: '🧠' },
+            ];
+
+            return (
+                <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-primary-900 text-white transition-transform ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                    <div className="flex items-center justify-center h-16 border-b border-primary-800">
+                        <div className="flex items-center space-x-2">
+                            <MtFujiLogo />
+                            <span className="text-xl font-bold">Mt Fuji</span>
+                        </div>
+                    </div>
+                    <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
+                        {menuItems.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => onDashboardChange(item.id)}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeDashboard === item.id ? 'bg-primary-600' : 'text-primary-100 hover:bg-primary-800'}`}
+                            >
+                                <span>{item.icon}</span>
+                                <span>{item.label}</span>
+                                {activeDashboard === item.id && <div className="ml-auto w-2 h-2 rounded-full bg-status-green" />}
+                            </button>
+                        ))}
+                    </nav>
+                </aside>
+            );
+        };
+
+        // KPI Card Component
+        const KPICard = ({ title, value, trend, trendUp = true, color = 'blue' }) => {
+            const colors = {
+                blue: 'border-primary-600',
+                green: 'border-status-green',
+                yellow: 'border-status-yellow',
+                red: 'border-status-red',
+            };
+            return (
+                <div className={`kpi-card border-l-4 ${colors[color]}`}>
+                    <p className="text-sm text-gray-600 mb-1">{title}</p>
+                    <p className="text-2xl font-bold text-gray-900">{value}</p>
+                    {trend && (
+                        <div className={`flex items-center mt-2 text-sm ${trendUp ? 'text-status-green' : 'text-status-red'}`}>
+                            <span>{trendUp ? '↑' : '↓'} {trend}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Global CEO Dashboard
+        const GlobalCEODashboard = () => {
+            const kpis = {
+                productionToday: '12,450 MT',
+                mtdProduction: '348,200 MT',
+                ytdProduction: '2,145,000 MT',
+                capacityUtilization: '87.3%',
+                globalOEE: '84.2%',
+                ebitda: '$685M',
+                revenue: '$892M',
+                otif: '96.8%',
+                customerSatisfaction: '91.5',
+                criticalAlerts: 5,
+                safetyIndex: '98.2%',
+                sustainabilityIndex: '94.2%',
+            };
+
+            const plantData = [
+                { name: 'Japan Mill', oee: 92, cost: 645, energy: 395, status: 'healthy' },
+                { name: 'China Mill A', oee: 88, cost: 680, energy: 420, status: 'healthy' },
+                { name: 'India Mill', oee: 85, cost: 620, energy: 380, status: 'attention' },
+                { name: 'USA Mill', oee: 78, cost: 750, energy: 480, status: 'risk' },
+                { name: 'Germany Mill', oee: 90, cost: 700, energy: 410, status: 'healthy' },
+            ];
+
+            const alerts = [
+                { id: 1, type: 'Quality Risk', message: 'PM3 moisture variation detected', severity: 'high', time: '10 min ago' },
+                { id: 2, type: 'Maintenance', message: 'Bearing replacement due in 48h', severity: 'medium', time: '1 hour ago' },
+                { id: 3, type: 'Energy', message: 'Steam consumption 15% above target', severity: 'high', time: '2 hours ago' },
+            ];
+
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <KPICard title="Production Today" value={kpis.productionToday} trend="+3.2%" trendUp={true} />
+                        <KPICard title="MTD Production" value={kpis.mtdProduction} trend="+5.1%" trendUp={true} />
+                        <KPICard title="YTD Production" value={kpis.ytdProduction} trend="+8.4%" trendUp={true} />
+                        <KPICard title="Capacity Utilization" value={kpis.capacityUtilization} trend="+2.1%" trendUp={true} />
+                        <KPICard title="Global OEE" value={kpis.globalOEE} trend="+1.5%" trendUp={true} color="green" />
+                        <KPICard title="EBITDA" value={kpis.ebitda} trend="+4.2%" trendUp={true} />
+                        <KPICard title="Revenue" value={kpis.revenue} trend="+6.8%" trendUp={true} />
+                        <KPICard title="OTIF" value={kpis.otif} trend="-0.5%" trendUp={false} />
+                        <KPICard title="Critical Alerts" value={kpis.criticalAlerts} trend="+2" trendUp={false} color="red" />
+                    </div>
+
+                    <div className="card">
+                        <h2 className="text-xl font-bold mb-4 text-primary-900">Global Manufacturing Network</h2>
+                        <div id="world-map" className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="text-6xl mb-2">🌍</div>
+                                <p className="text-gray-600">Interactive World Map</p>
+                                <div className="flex justify-center space-x-4 mt-4 text-sm">
+                                    <span className="flex items-center"><div className="w-3 h-3 rounded-full bg-status-green mr-1"></div> Healthy</span>
+                                    <span className="flex items-center"><div className="w-3 h-3 rounded-full bg-status-yellow mr-1"></div> Attention</span>
+                                    <span className="flex items-center"><div className="w-3 h-3 rounded-full bg-status-orange mr-1"></div> Risk</span>
+                                    <span className="flex items-center"><div className="w-3 h-3 rounded-full bg-status-red mr-1"></div> Critical</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="card">
+                            <h3 className="text-lg font-bold mb-4">Plant Performance Comparison</h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={plantData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="oee" fill="#0066CC" name="OEE %" />
+                                    <Bar dataKey="cost" fill="#F5A623" name="Cost/Ton" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="card">
+                            <h3 className="text-lg font-bold mb-4">AI Executive Summary</h3>
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <p className="text-gray-700 mb-3">
+                                    <strong>Global production is 3.2% above target.</strong> Asia region leads performance with 92% OEE. 
+                                    One tissue mill in Europe shows elevated steam consumption. Two paper machines are predicted 
+                                    to experience downtime within 48 hours.
+                                </p>
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm text-status-green">✓ Production 3.2% above target</div>
+                                    <div className="flex items-center text-sm text-status-green">✓ Asia region OEE: 92%</div>
+                                    <div className="flex items-center text-sm text-status-yellow">⚠ 2 machines predicted downtime in 48h</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">Critical Alerts</h3>
+                        <div className="space-y-3">
+                            {alerts.map(alert => (
+                                <div key={alert.id} className={`p-4 rounded-lg border-l-4 ${alert.severity === 'high' ? 'bg-red-50 border-status-red' : 'bg-yellow-50 border-status-yellow'}`}>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">{alert.type}</p>
+                                            <p className="text-sm text-gray-600">{alert.message}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-500">{alert.time}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Plant Command Center
+        const PlantDashboard = () => {
+            const pqcsmData = {
+                production: { today: '420 MT', vsPlan: '+3.2%', efficiency: '89%', yield: '94.5%' },
+                quality: { defects: '2.1%', claims: 3, firstPassYield: '97.8%', gsm: '±1.2g' },
+                cost: { perTon: '$645', steam: '$125', power: '$95', water: '$15' },
+                safety: { nearMisses: 2, lti: 0, audits: '94%', compliance: '100%' },
+                morale: { attendance: '96%', training: '92%', engagement: '85%' },
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-6xl font-bold text-status-green mb-2">87/100</div>
+                            <p className="text-gray-600">Plant Health Score</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="bg-blue-900 text-white p-4 rounded-lg">
+                            <h3 className="text-lg font-bold mb-2">P - Production</h3>
+                            <p>Today: <strong>{pqcsmData.production.today}</strong></p>
+                            <p>vs Plan: <strong className="text-status-green">{pqcsmData.production.vsPlan}</strong></p>
+                            <p>Efficiency: <strong>{pqcsmData.production.efficiency}</strong></p>
+                            <p>Yield: <strong>{pqcsmData.production.yield}</strong></p>
+                        </div>
+                        <div className="bg-teal-600 text-white p-4 rounded-lg">
+                            <h3 className="text-lg font-bold mb-2">Q - Quality</h3>
+                            <p>Defects: <strong>{pqcsmData.quality.defects}</strong></p>
+                            <p>Claims: <strong>{pqcsmData.quality.claims}</strong></p>
+                            <p>First Pass: <strong>{pqcsmData.quality.firstPassYield}</strong></p>
+                            <p>GSM Var: <strong>{pqcsmData.quality.gsm}</strong></p>
+                        </div>
+                        <div className="bg-green-600 text-white p-4 rounded-lg">
+                            <h3 className="text-lg font-bold mb-2">C - Cost</h3>
+                            <p>Cost/Ton: <strong>{pqcsmData.cost.perTon}</strong></p>
+                            <p>Steam: <strong>{pqcsmData.cost.steam}</strong></p>
+                            <p>Power: <strong>{pqcsmData.cost.power}</strong></p>
+                            <p>Water: <strong>{pqcsmData.cost.water}</strong></p>
+                        </div>
+                        <div className="bg-red-600 text-white p-4 rounded-lg">
+                            <h3 className="text-lg font-bold mb-2">S - Safety</h3>
+                            <p>Near Misses: <strong>{pqcsmData.safety.nearMisses}</strong></p>
+                            <p>LTI: <strong>{pqcsmData.safety.lti}</strong></p>
+                            <p>Audits: <strong>{pqcsmData.safety.audits}</strong></p>
+                            <p>Compliance: <strong>{pqcsmData.safety.compliance}</strong></p>
+                        </div>
+                        <div className="bg-purple-600 text-white p-4 rounded-lg">
+                            <h3 className="text-lg font-bold mb-2">M - Morale</h3>
+                            <p>Attendance: <strong>{pqcsmData.morale.attendance}</strong></p>
+                            <p>Training: <strong>{pqcsmData.morale.training}</strong></p>
+                            <p>Engagement: <strong>{pqcsmData.morale.engagement}</strong></p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="card">
+                            <h3 className="text-lg font-bold mb-4">Production Trend</h3>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <AreaChart data={[{day: 'Mon', val: 380}, {day: 'Tue', val: 410}, {day: 'Wed', val: 395}, {day: 'Thu', val: 420}, {day: 'Fri', val: 435}]}>
+                                    <Area type="monotone" dataKey="val" stroke="#0066CC" fill="#0066CC" fillOpacity={0.3} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="card">
+                            <h3 className="text-lg font-bold mb-4">OEE Trend</h3>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <LineChart data={[{day: 'Mon', val: 82}, {day: 'Tue', val: 85}, {day: 'Wed', val: 83}, {day: 'Thu', val: 87}, {day: 'Fri', val: 89}]}>
+                                    <Line type="monotone" dataKey="val" stroke="#10B981" strokeWidth={2} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="card">
+                            <h3 className="text-lg font-bold mb-4">Cost Trend</h3>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <LineChart data={[{day: 'Mon', val: 650}, {day: 'Tue', val: 645}, {day: 'Wed', val: 648}, {day: 'Thu', val: 642}, {day: 'Fri', val: 645}]}>
+                                    <Line type="monotone" dataKey="val" stroke="#F5A623" strokeWidth={2} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Regional Dashboard
+        const RegionalDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <KPICard title="Production" value="4,250 MT/day" trend="+4.2%" />
+                    <KPICard title="OEE" value="88.7%" trend="+2.1%" color="green" />
+                    <KPICard title="Cost/Ton" value="$645" trend="-1.5%" trendUp={true} />
+                    <KPICard title="Quality Index" value="94.2" trend="+0.8%" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Regional Plant Comparison</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={[
+                            { plant: 'Japan', oee: 92, cost: 645 },
+                            { plant: 'China A', oee: 88, cost: 680 },
+                            { plant: 'China B', oee: 85, cost: 695 },
+                            { plant: 'India', oee: 87, cost: 620 },
+                            { plant: 'Indonesia', oee: 84, cost: 635 },
+                        ]}>
+                            <BarChart dataKey="oee" fill="#0066CC" name="OEE %" />
+                            <BarChart dataKey="cost" fill="#F5A623" name="Cost/Ton" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        );
+
+        // Energy Dashboard
+        const EnergyDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="Energy/Ton" value="420 kWh" trend="-2.3%" trendUp={true} />
+                    <KPICard title="Steam/Ton" value="1.8 tons" trend="-1.5%" trendUp={true} />
+                    <KPICard title="Water/Ton" value="12 m³" trend="-3.2%" trendUp={true} />
+                    <KPICard title="Carbon/Ton" value="0.52 tons" trend="-4.1%" trendUp={true} />
+                    <KPICard title="Energy Cost" value="$89/ton" trend="-2.8%" trendUp={true} />
+                    <KPICard title="Efficiency" value="87.4%" trend="+1.2%" color="green" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">Power Consumption</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                                <Pie data={[{name: 'Grid', value: 45}, {name: 'Captive', value: 30}, {name: 'Renewable', value: 25}]} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
+                                    <Cell fill="#0066CC" />
+                                    <Cell fill="#F5A623" />
+                                    <Cell fill="#10B981" />
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">AI Optimization Opportunities</h3>
+                        <ul className="space-y-3">
+                            <li className="flex items-start">
+                                <span className="text-status-green mr-2">✓</span>
+                                <div>
+                                    <p className="font-semibold">Reduce steam trap losses by 12%</p>
+                                    <p className="text-sm text-gray-600">Save $2.4M/year</p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <span className="text-status-green mr-2">✓</span>
+                                <div>
+                                    <p className="font-semibold">Optimize dryer section steam pressure</p>
+                                    <p className="text-sm text-gray-600">Save 8% energy</p>
+                                </div>
+                            </li>
+                            <li className="flex items-start">
+                                <span className="text-status-green mr-2">✓</span>
+                                <div>
+                                    <p className="font-semibold">Shift high-energy processes to off-peak</p>
+                                    <p className="text-sm text-gray-600">Save $1.2M/year</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Quality Dashboard
+        const QualityDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="First Pass Yield" value="97.8%" trend="+1.2%" color="green" />
+                    <KPICard title="Defect Rate" value="2.1%" trend="-0.5%" trendUp={true} />
+                    <KPICard title="Customer Claims" value="3" trend="-2" trendUp={true} />
+                    <KPICard title="Complaints" value="12" trend="-3" trendUp={true} />
+                    <KPICard title="Quality Index" value="94.2" trend="+0.8%" />
+                    <KPICard title="SPC Compliance" value="96.5%" trend="+1.1%" color="green" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">Defect Analysis</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={[{type: 'Wrinkles', val: 35}, {type: 'Holes', val: 22}, {type: 'Stains', val: 18}, {type: 'Thickness', val: 15}, {type: 'Other', val: 10}]}>
+                                <Bar dataKey="val" fill="#DC2626" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">SPC Control Chart - GSM</h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={[{t: 1, v: 79}, {t: 2, v: 81}, {t: 3, v: 80}, {t: 4, v: 78}, {t: 5, v: 82}, {t: 6, v: 80}]}>
+                                <Line type="monotone" dataKey="v" stroke="#0066CC" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Maintenance Dashboard
+        const MaintenanceDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="MTBF" value="720 hrs" trend="+5%" color="green" />
+                    <KPICard title="MTTR" value="4.2 hrs" trend="-8%" trendUp={true} />
+                    <KPICard title="Availability" value="94.5%" trend="+2.1%" color="green" />
+                    <KPICard title="Work Orders" value="47" trend="12 critical" color="red" />
+                    <KPICard title="Predictive Alerts" value="8" />
+                    <KPICard title="Backlog" value="156" trend="+8" trendUp={false} color="yellow" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Predictive Maintenance Alerts</h3>
+                    <div className="space-y-3">
+                        <div className="p-4 bg-yellow-50 border-l-4 border-status-yellow rounded">
+                            <p className="font-semibold">PM3 - Dryer Section Bearing #7</p>
+                            <p className="text-sm text-gray-600">Vibration increasing - Replace within 30 days</p>
+                        </div>
+                        <div className="p-4 bg-orange-50 border-l-4 border-status-orange rounded">
+                            <p className="font-semibold">PM1 - Headbox Consistency</p>
+                            <p className="text-sm text-gray-600">Calibration drift detected - Adjust within 7 days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Sustainability Dashboard
+        const SustainabilityDashboard = () => (
+            <div className="space-y-6">
+                <div className="flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="text-6xl font-bold text-status-green mb-2">91.3/100</div>
+                        <p className="text-gray-600">ESG Score</p>
+                        <p className="text-sm text-gray-500">E: 89 | S: 94 | G: 91</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <KPICard title="CO₂ Emissions" value="2.4M tons" trend="-8% YoY" trendUp={true} />
+                    <KPICard title="Water Consumption" value="42.5M m³" trend="-5% YoY" trendUp={true} />
+                    <KPICard title="Waste Generation" value="125K tons" trend="-12% YoY" trendUp={true} />
+                    <KPICard title="Renewable Energy" value="34%" trend="+5%" color="green" />
+                    <KPICard title="Circular Economy" value="78%" trend="+3%" color="green" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Net Zero Progress</h3>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div className="bg-status-green h-4 rounded-full" style={{width: '34%'}}></div>
+                    </div>
+                    <p className="text-center mt-2 text-sm text-gray-600">34% towards 2050 Net Zero Target</p>
+                </div>
+            </div>
+        );
+
+        // Shift Performance Dashboard
+        const ShiftDashboard = () => {
+            const shifts = [
+                { name: 'A Shift', production: 95, quality: 97, oee: 89, energy: 92 },
+                { name: 'B Shift', production: 91, quality: 95, oee: 91, energy: 88 },
+                { name: 'C Shift', production: 88, quality: 93, oee: 85, energy: 90 },
+                { name: 'D Shift', production: 93, quality: 96, oee: 88, energy: 91 },
+            ];
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {shifts.map(shift => (
+                            <div key={shift.name} className="card">
+                                <h3 className="text-lg font-bold mb-4">{shift.name}</h3>
+                                <p>Production: <strong>{shift.production}%</strong></p>
+                                <p>Quality: <strong>{shift.quality}%</strong></p>
+                                <p>OEE: <strong>{shift.oee}%</strong></p>
+                                <p>Energy: <strong>{shift.energy}%</strong></p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4">Shift Comparison</h3>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={shifts}>
+                                <Bar dataKey="production" fill="#0066CC" name="Production" />
+                                <Bar dataKey="quality" fill="#10B981" name="Quality" />
+                                <Bar dataKey="oee" fill="#F5A623" name="OEE" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            );
+        };
+
+        // Machine Digital Twin
+        const MachineTwinDashboard = () => (
+            <div className="space-y-6">
+                <div className="card">
+                    <h3 className="text-xl font-bold mb-4">PM3 - Machine Digital Twin</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 className="font-bold mb-2">Real-Time Parameters</h4>
+                            <div className="space-y-2">
+                                <p>Speed: <strong>1,240 m/min</strong></p>
+                                <p>Vibration: <strong>2.1 mm/s</strong> (normal)</p>
+                                <p>Temperature: <strong>78°C</strong></p>
+                                <p>Pressure: <strong>4.2 bar</strong></p>
+                                <p>Flow: <strong>125 m³/h</strong></p>
+                            </div>
+                            <h4 className="font-bold mb-2 mt-4">Quality Parameters</h4>
+                            <div className="space-y-2">
+                                <p>GSM: <strong>80g</strong></p>
+                                <p>Moisture: <strong>5.8%</strong></p>
+                                <p>Brightness: <strong>92 ISO</strong></p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="font-bold mb-2">Asset Health Index</h4>
+                            <div className="text-center py-8">
+                                <div className="text-6xl font-bold text-status-green mb-2">82/100</div>
+                                <p>Remaining Useful Life: <strong>145 days</strong></p>
+                                <p>Failure Probability: <strong>8%</strong></p>
+                            </div>
+                            <div className="mt-4 p-4 bg-blue-50 rounded">
+                                <p className="font-semibold">AI Recommendations:</p>
+                                <ul className="list-disc list-inside text-sm mt-2">
+                                    <li>Replace bearing on dryer section roll #7 within 30 days</li>
+                                    <li>Adjust headbox consistency to improve formation</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Pulp Mill Dashboard
+        const PulpMillDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="Yield" value="94.5%" trend="+1.2%" color="green" />
+                    <KPICard title="Kappa Number" value="28.5" trend="-0.5%" trendUp={true} />
+                    <KPICard title="Chemical Consumption" value="145 kg/ton" />
+                    <KPICard title="Steam Consumption" value="1.9 tons/ton" />
+                    <KPICard title="Recovery Efficiency" value="97.2%" color="green" />
+                    <KPICard title="Production" value="380 MT/day" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Process Flow</h3>
+                    <div className="flex flex-wrap items-center justify-center space-x-2">
+                        {['Wood Yard', 'Digester', 'Brown Stock', 'Screening', 'Bleaching', 'Recovery', 'Lime Kiln'].map((step, i) => (
+                            <React.Fragment key={step}>
+                                <div className="bg-primary-600 text-white px-4 py-2 rounded">{step}</div>
+                                {i < 6 && <span className="text-2xl">→</span>}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Paper Machine Dashboard
+        const PaperMachineDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-8 gap-4">
+                    <KPICard title="OEE" value="84.2%" />
+                    <KPICard title="Speed" value="1,240 m/min" />
+                    <KPICard title="Break Frequency" value="2.1" />
+                    <KPICard title="Broke %" value="3.2%" />
+                    <KPICard title="Production" value="420 MT/day" />
+                    <KPICard title="Quality Index" value="94.2" />
+                    <KPICard title="Energy/Ton" value="420 kWh" />
+                    <KPICard title="Grade" value="80gsm" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Machine Sections</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {['Approach Flow', 'Headbox', 'Wire Section', 'Press Section', 'Dryer Section', 'Size Press', 'Coater', 'Calendar', 'Reel', 'Winder'].map(section => (
+                            <div key={section} className="bg-primary-100 px-3 py-2 rounded text-sm">{section}</div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Converting Dashboard
+        const ConvertingDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="Output" value="285 MT/day" />
+                    <KPICard title="Waste" value="2.8%" trend="-0.5%" trendUp={true} />
+                    <KPICard title="OEE" value="86.5%" />
+                    <KPICard title="Inventory" value="12 days" color="green" />
+                    <KPICard title="Customer Service" value="97.2%" />
+                    <KPICard title="Orders Fulfilled" value="94.8%" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {['Cutter Line 1', 'Cutter Line 2', 'Rewinder Line 1', 'Packaging Line'].map(line => (
+                        <div key={line} className="card">
+                            <h4 className="font-bold mb-2">{line}</h4>
+                            <p>Status: <span className="text-status-green">● Running</span></p>
+                            <p>Speed: <strong>82 m/min</strong></p>
+                            <p>Output: <strong>63.4 MT</strong></p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Supply Chain Dashboard
+        const SupplyChainDashboard = () => (
+            <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <KPICard title="Raw Material" value="45 days" />
+                    <KPICard title="Chemical Inventory" value="32 days" />
+                    <KPICard title="Finished Goods" value="12 days" />
+                    <KPICard title="Warehouse Util" value="78%" />
+                    <KPICard title="On-Time Delivery" value="96.8%" color="green" />
+                    <KPICard title="Logistics Cost" value="$42/ton" />
+                </div>
+                <div className="card">
+                    <h3 className="text-lg font-bold mb-4">Supply Chain Network</h3>
+                    <div className="h-96 bg-gray-100 rounded flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-6xl mb-2">🗺️</div>
+                            <p className="text-gray-600">Interactive Supply Chain Map</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // AI Copilot Dashboard
+        const AICopilotDashboard = () => {
+            const [query, setQuery] = useState('');
+            const [response, setResponse] = useState('');
+            
+            const handleQuery = () => {
+                setResponse('Based on current data, the lowest OEE plants this month are: 1) USA Mill (78%), 2) China Mill B (85%), 3) India Mill (85%). Main issues: equipment downtime and quality losses.');
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="card">
+                        <h3 className="text-xl font-bold mb-4">🤖 AI Copilot - Ask Anything</h3>
+                        <div className="flex space-x-2">
+                            <input
+                                type="text"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Ask Mt Fuji AI anything..."
+                                className="flex-1 px-4 py-2 border rounded-lg"
+                                onKeyPress={(e) => e.key === 'Enter' && handleQuery()}
+                            />
+                            <button onClick={handleQuery} className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700">
+                                Ask
+                            </button>
+                        </div>
+                        {response && (
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                <p className="text-gray-700">{response}</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="card">
+                            <h4 className="font-bold mb-2">Predictive Maintenance</h4>
+                            <p className="text-sm text-gray-600">Forecast equipment failure 72h in advance</p>
+                        </div>
+                        <div className="card">
+                            <h4 className="font-bold mb-2">Predictive Quality</h4>
+                            <p className="text-sm text-gray-600">Anticipate defects before occurrence</p>
+                        </div>
+                        <div className="card">
+                            <h4 className="font-bold mb-2">Energy Optimization</h4>
+                            <p className="text-sm text-gray-600">Reduce kWh/ton by up to 11%</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [activeDashboard, setActiveDashboard] = useState('global-ceo');
+
+            const renderDashboard = () => {
+                switch(activeDashboard) {
+                    case 'global-ceo': return <GlobalCEODashboard />;
+                    case 'plant': return <PlantDashboard />;
+                    case 'regional': return <RegionalDashboard />;
+                    case 'energy': return <EnergyDashboard />;
+                    case 'quality': return <QualityDashboard />;
+                    case 'maintenance': return <MaintenanceDashboard />;
+                    case 'sustainability': return <SustainabilityDashboard />;
+                    case 'shift': return <ShiftDashboard />;
+                    case 'machine-twin': return <MachineTwinDashboard />;
+                    case 'pulp-mill': return <PulpMillDashboard />;
+                    case 'paper-machine': return <PaperMachineDashboard />;
+                    case 'converting': return <ConvertingDashboard />;
+                    case 'supply-chain': return <SupplyChainDashboard />;
+                    case 'ai-copilot': return <AICopilotDashboard />;
+                    default: return <GlobalCEODashboard />;
+                }
+            };
+
+            return (
+                <div className="flex h-screen bg-gray-50">
+                    <Sidebar activeDashboard={activeDashboard} onDashboardChange={setActiveDashboard} />
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <header className="bg-white shadow-sm border-b px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <h1 className="text-2xl font-bold text-primary-900">
+                                    Mt Fuji - {activeDashboard.replace('-', ' ').toUpperCase()} Command Center
+                                </h1>
+                                <div className="flex items-center space-x-4">
+                                    <span className="text-sm text-gray-600">Last updated: {new Date().toLocaleTimeString()}</span>
+                                    <div className="w-2 h-2 rounded-full bg-status-green animate-pulse-green"></div>
+                                </div>
+                            </div>
+                        </header>
+                        <main className="flex-1 overflow-y-auto p-6">
+                            {renderDashboard()}
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
